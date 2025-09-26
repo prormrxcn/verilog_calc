@@ -25,23 +25,35 @@ module top(
     input [3:0] a,
     input [3:0] b,
     output  [6:0] seg,
-    output  [2:0] an,
+    output  [3:0] an,
     output [3:0] led_a,      
     output [3:0] led_b,
     output [1:0] led_op,
-    output led_clk
+    output led_clk,
+    input enable,
+    output wire serial_tx
 );
     wire [7:0] result;  
-    
-   
+    wire [7:0] ascii_data;
     assign led_a = a;
     assign led_b = b;
     assign led_op = op;
-    assign led_clk = clk;  // Show clock directly
+    assign led_clk = clk;  
     
     calaculator calc (.clk(clk), .rst(rst), .op(op), .a(a), .b(b), .result(result));
     seven_seg_driver driver (.data(result), .seg(seg), .an(an), .rst(rst), .clk(clk));
+    binary_to_ascii converter (
+        .binary_in(result),
+        .ascii_out(ascii_data)
+    );
     
+    transmitter uart_tx (
+        .clk(clk),  
+        .rst(rst),
+        .enable(enable),
+        .data(ascii_data),  // Send ASCII now
+        .tx(serial_tx)
+    );
 endmodule
 
 module calaculator(
@@ -106,7 +118,7 @@ module multiply(input [3:0] a ,b ,output [7:0] product);
     assign product = pp0 + (pp1 << 1) + (pp2 << 2) + (pp3 << 3);
 endmodule
 
-module seven_seg_driver (input [7:0] data, output reg [6:0] seg , output reg [2:0] an ,input wire rst, input wire clk);
+module seven_seg_driver (input [7:0] data, output reg [6:0] seg , output reg [3:0] an ,input wire rst, input wire clk);
     wire [1:0] an_sel;
     reg [15:0]counter = 0 ;
     reg [3:0] digit ;
@@ -135,18 +147,18 @@ module seven_seg_driver (input [7:0] data, output reg [6:0] seg , output reg [2:
     always @(*)begin
         case (an_sel)
             2'b00 : begin
-                        an = 3'b110;
+                        an = 4'b1110;
                         digit = units;
                     end
             2'b01 : begin 
-                        an = 3'b101;
+                        an = 4'b1101;
                         digit = tens;
                     end
             2'b10 : begin 
-                        an = 3'b011;
+                        an = 4'b1011;
                         digit = hundreds;
                     end
-            default : begin an  = 3'b111;
+            default : begin an  = 4'b1111;
                             digit = 4'b0;
                        end
         endcase
@@ -164,4 +176,76 @@ module seven_seg_driver (input [7:0] data, output reg [6:0] seg , output reg [2:
             default : seg = 7'b1111111;
         endcase
         end
+endmodule
+
+module transmitter(
+    input clk,
+    input rst,
+    input enable,
+    input [7:0] data,
+    output reg tx
+);
+
+reg [3:0] bit_counter;
+reg [13:0] counter;
+reg state;
+reg [9:0] shift_reg;
+
+localparam BAUD_COUNT = 14'd10417;
+
+always @(posedge clk) begin
+    if (rst) begin
+        state <= 0;
+        counter <= 0;
+        bit_counter <= 0;
+        shift_reg <= 10'h3FF;
+        tx <= 1'b1;
+    end else begin
+        case (state)
+            0: begin
+                tx <= 1'b1;
+                if (enable) begin
+                    state <= 1;
+                    shift_reg <= {1'b1, data, 1'b0};
+                    bit_counter <= 0;
+                    counter <= 0;
+                end
+            end
+
+            1: begin
+                counter <= counter + 1;
+
+                if (counter >= BAUD_COUNT) begin
+                    counter <= 0;
+
+                    if (bit_counter >= 10) begin
+                        state <= 0;
+                        tx <= 1'b1;
+                    end else begin
+                        tx <= shift_reg[0];
+                        shift_reg <= shift_reg >> 1;
+                        bit_counter <= bit_counter + 1;
+                    end
+                end
+            end
+
+            default: state <= 0;
+        endcase
+    end
+end
+
+endmodule
+
+
+module binary_to_ascii(
+    input [7:0] binary_in,
+    output reg [7:0] ascii_out
+);
+    wire [3:0] hundreds = binary_in / 100;
+    wire [3:0] tens = (binary_in / 10) % 10;
+    wire [3:0] units = binary_in % 10;
+
+    always @(*) begin
+        ascii_out = 8'h30 + units;
+    end
 endmodule

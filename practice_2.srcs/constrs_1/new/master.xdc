@@ -54,6 +54,7 @@ set_property -dict { PACKAGE_PIN U7   IOSTANDARD LVCMOS33 } [get_ports {seg[6]}]
 set_property -dict { PACKAGE_PIN U2   IOSTANDARD LVCMOS33 } [get_ports {an[0]}]
 set_property -dict { PACKAGE_PIN U4   IOSTANDARD LVCMOS33 } [get_ports {an[1]}]
 set_property -dict { PACKAGE_PIN V4   IOSTANDARD LVCMOS33 } [get_ports {an[2]}]
+set_property -dict { PACKAGE_PIN W4   IOSTANDARD LVCMOS33 } [get_ports {an[3]}]
 
 ## Optional: LEDs to show inputs (uncomment if you want visual feedback)
 set_property -dict { PACKAGE_PIN U16   IOSTANDARD LVCMOS33 } [get_ports {led_a[0]}] ;# LED 0 shows a[0]
@@ -71,7 +72,9 @@ set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS33 } [get_ports {led_b[3
 set_property -dict { PACKAGE_PIN V13   IOSTANDARD LVCMOS33 } [get_ports {led_op[0]}] ;# LED 8 shows op[0]
 set_property -dict { PACKAGE_PIN V3    IOSTANDARD LVCMOS33 } [get_ports {led_op[1]}] ;# LED 9 shows op[1]
 set_property -dict { PACKAGE_PIN L1    IOSTANDARD LVCMOS33 } [get_ports {led_clk}] ;
-
+# Remove or comment out the LVCMOS18 setting for enable
+set_property -dict { PACKAGE_PIN A18   IOSTANDARD LVCMOS33 } [get_ports serial_tx]
+set_property -dict { PACKAGE_PIN R2   IOSTANDARD LVCMOS33 } [get_ports enable]
 ## Configuration options
 set_property CONFIG_VOLTAGE 3.3 [current_design]
 set_property CFGBVS VCCO [current_design]
